@@ -46,3 +46,10 @@ export const PERIOD_LABELS = {
   mtd: 'Tháng hiện tại',
   ytd: 'Lũy kế năm',
 }
+
+// period can be 'day'|'mtd'|'ytd' or { from: 'YYYY-MM-DD', to: 'YYYY-MM-DD' }
+export const periodLabel = (p) => {
+  if (!p || typeof p === 'string') return PERIOD_LABELS[p] || p || ''
+  const fmt = (s) => `${s.slice(8)}/${s.slice(5, 7)}/${s.slice(0, 4)}`
+  return `${fmt(p.from)} – ${fmt(p.to)}`
+}

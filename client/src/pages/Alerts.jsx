@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getAlerts } from '../api'
 import { useCompany } from '../context/CompanyContext'
 import PeriodPicker from '../components/PeriodPicker'
-import { PERIOD_LABELS } from '../utils/format'
+import { periodLabel } from '../utils/format'
 
 const SEV_CLASS = {
   high:   'bg-red-50 border-red-200 text-red-800',
@@ -24,12 +24,13 @@ export default function Alerts() {
   const navigate = useNavigate()
   const { switchCompany } = useCompany()
 
+  const periodKey = typeof period === 'string' ? period : `${period?.from}~${period?.to}`
   useEffect(() => {
     setLoading(true)
     getAlerts(period)
       .then(setData)
       .finally(() => setLoading(false))
-  }, [period])
+  }, [periodKey])
 
   if (loading || !data) return <div className="text-gray-500">Đang tải cảnh báo…</div>
 
@@ -50,7 +51,7 @@ export default function Alerts() {
         <div>
           <h1 className="text-xl font-bold text-gray-800">Cảnh báo</h1>
           <div className="text-xs text-gray-500 mt-0.5">
-            {PERIOD_LABELS[period]} · {data.alerts.length} cảnh báo
+            {periodLabel(period)} · {data.alerts.length} cảnh báo
           </div>
         </div>
         <PeriodPicker value={period} onChange={setPeriod} />

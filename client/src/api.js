@@ -27,20 +27,26 @@ api.interceptors.response.use(
 export const loginUser  = (username, password) => api.post('/auth/login', { username, password }).then(r => r.data)
 export const logoutUser = () => api.post('/auth/logout').then(r => r.data)
 
+// period can be 'day'|'mtd'|'ytd' or { from: 'YYYY-MM-DD', to: 'YYYY-MM-DD' }
+function periodParams(period) {
+  if (period && typeof period === 'object') return { dateFrom: period.from, dateTo: period.to }
+  return { period }
+}
+
 // Finance ────────────────────────────────────────────────
 export const getCompanies   = () => api.get('/finance/companies').then(r => r.data)
 export const getBuckets     = () => api.get('/finance/buckets').then(r => r.data)
 export const getCoaMapping  = () => api.get('/finance/coa-mapping').then(r => r.data)
 
-export const getGroupSummary    = (period) => api.get('/finance/reports/group/summary', { params: { period } }).then(r => r.data)
-export const getCompanySummary  = (id, period) => api.get(`/finance/reports/company/${id}/summary`, { params: { period } }).then(r => r.data)
-export const getCostStructure   = (id, period) => api.get(`/finance/reports/company/${id}/cost-structure`, { params: { period } }).then(r => r.data)
-export const getPnl             = (id, period) => api.get(`/finance/reports/company/${id}/pnl`, { params: { period } }).then(r => r.data)
+export const getGroupSummary    = (period) => api.get('/finance/reports/group/summary', { params: periodParams(period) }).then(r => r.data)
+export const getCompanySummary  = (id, period) => api.get(`/finance/reports/company/${id}/summary`, { params: periodParams(period) }).then(r => r.data)
+export const getCostStructure   = (id, period) => api.get(`/finance/reports/company/${id}/cost-structure`, { params: periodParams(period) }).then(r => r.data)
+export const getPnl             = (id, period) => api.get(`/finance/reports/company/${id}/pnl`, { params: periodParams(period) }).then(r => r.data)
 
 export const getThresholds      = (id) => api.get(`/finance/companies/${id}/thresholds`).then(r => r.data)
 export const updateThresholds   = (id, thresholds) => api.put(`/finance/companies/${id}/thresholds`, { thresholds }).then(r => r.data)
 
-export const getAlerts          = (period) => api.get('/finance/alerts', { params: { period } }).then(r => r.data)
+export const getAlerts          = (period) => api.get('/finance/alerts', { params: periodParams(period) }).then(r => r.data)
 export const triggerSync        = () => api.post('/finance/sync').then(r => r.data)
 
 // GL import ──────────────────────────────────────────────

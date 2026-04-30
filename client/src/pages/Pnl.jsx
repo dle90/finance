@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { getPnl } from '../api'
 import { useCompany } from '../context/CompanyContext'
-import { fmtVnd, fmtPct, fmtPctRaw, PERIOD_LABELS, variance } from '../utils/format'
+import { fmtVnd, fmtPct, fmtPctRaw, periodLabel, variance } from '../utils/format'
 import PeriodPicker from '../components/PeriodPicker'
 
 export default function Pnl() {
@@ -10,13 +10,14 @@ export default function Pnl() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
 
+  const periodKey = typeof period === 'string' ? period : `${period?.from}~${period?.to}`
   useEffect(() => {
     if (!current?.id) return
     setLoading(true)
     getPnl(current.id, period)
       .then(setData)
       .finally(() => setLoading(false))
-  }, [current?.id, period])
+  }, [current?.id, periodKey])
 
   if (!current) return <div className="text-gray-500">Đang tải…</div>
   if (loading || !data) return <div className="text-gray-500">Đang tải KQKD…</div>
@@ -29,7 +30,7 @@ export default function Pnl() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-800">{current.name} — Kết quả kinh doanh</h1>
-          <div className="text-xs text-gray-500 mt-0.5">{PERIOD_LABELS[period]}</div>
+          <div className="text-xs text-gray-500 mt-0.5">{periodLabel(period)}</div>
         </div>
         <PeriodPicker value={period} onChange={setPeriod} />
       </div>

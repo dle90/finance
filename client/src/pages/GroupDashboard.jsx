@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { getGroupSummary } from '../api'
-import { fmtVnd, fmtPct, PERIOD_LABELS } from '../utils/format'
+import { fmtVnd, fmtPct, periodLabel } from '../utils/format'
 import { Kpi, MoneyKpi } from '../components/Kpi'
 import StatusPill from '../components/StatusPill'
 import PeriodPicker from '../components/PeriodPicker'
@@ -15,12 +15,13 @@ export default function GroupDashboard() {
   const navigate = useNavigate()
   const { switchCompany } = useCompany()
 
+  const periodKey = typeof period === 'string' ? period : `${period?.from}~${period?.to}`
   useEffect(() => {
     setLoading(true)
     getGroupSummary(period)
       .then(setData)
       .finally(() => setLoading(false))
-  }, [period])
+  }, [periodKey])
 
   if (loading) return <div className="text-gray-500">Đang tải dữ liệu tập đoàn…</div>
   if (!data) return <div className="text-red-500">Không tải được dữ liệu</div>
@@ -47,7 +48,7 @@ export default function GroupDashboard() {
         <div>
           <h1 className="text-xl font-bold text-gray-800">Dashboard tập đoàn</h1>
           <div className="text-xs text-gray-500 mt-0.5">
-            {PERIOD_LABELS[period]} · cập nhật {new Date(data.asOf).toLocaleDateString('vi-VN')}
+            {periodLabel(period)} · cập nhật {new Date(data.asOf).toLocaleDateString('vi-VN')}
           </div>
         </div>
         <PeriodPicker value={period} onChange={setPeriod} />

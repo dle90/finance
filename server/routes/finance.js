@@ -15,6 +15,55 @@ const TODAY = new Date('2026-04-30T00:00:00+07:00')
 const todayMonthIdx = () => TODAY.getMonth()                // 0-based
 const todayDayOfMonth = () => TODAY.getDate()
 
+// Aggregate months that overlap [dateFrom, dateTo], pro-rating partial months.
+function summarizeCompanyRange(companyId, fromStr, toStr) {
+  const months = MONTHLY[companyId]
+  if (!months) return null
+  const year = TODAY.getFullYear()
+  const from = new Date(fromStr + 'T00:00:00+07:00')
+  const to   = new Date(toStr   + 'T23:59:59+07:00')
+
+  const weighted = months.map((m, idx) => {
+    const mStart = new Date(year, idx, 1)
+    const mEnd   = new Date(year, idx + 1, 0)
+    if (mEnd < from || mStart > to) return null
+    const overlapStart = from > mStart ? from : mStart
+    const overlapEnd   = to   < mEnd   ? to   : mEnd
+    const daysOverlap  = Math.round((overlapEnd - overlapStart) / 86400000) + 1
+    const factor       = daysOverlap / mEnd.getDate()
+    return { ...m, _factor: factor }
+  }).filter(Boolean)
+
+  const sum = (k) => weighted.reduce((a, x) => a + Math.round((x[k] || 0) * x._factor), 0)
+  const sumBucket = (b) => weighted.reduce((a, x) => a + Math.round((x.buckets[b] || 0) * x._factor), 0)
+
+  const revenue = sum('revenue')
+  const cogs = sum('cogs')
+  const grossProfit = revenue - cogs
+  const buckets = Object.fromEntries(COST_BUCKETS.map(b => [b.key, sumBucket(b.key)]))
+  const totalOpex = Object.values(buckets).reduce((a, b) => a + b, 0)
+  const operatingProfit = grossProfit - totalOpex
+  const tax = operatingProfit > 0 ? Math.round(operatingProfit * 0.20) : 0
+  const netProfit = operatingProfit - tax
+  const cashflow = sum('cashflow')
+  return {
+    companyId, revenue, cogs, grossProfit, buckets, totalOpex,
+    operatingProfit, tax, netProfit,
+    grossMargin:  revenue ? grossProfit / revenue : 0,
+    opMargin:     revenue ? operatingProfit / revenue : 0,
+    netMargin:    revenue ? netProfit / revenue : 0,
+    cashflow,
+  }
+}
+
+// Resolve summary from either preset period or dateFrom/dateTo range.
+function resolveSummary(companyId, query) {
+  const { dateFrom, dateTo } = query
+  if (dateFrom && dateTo) return summarizeCompanyRange(companyId, dateFrom, dateTo)
+  const period = (query.period || 'mtd').toString()
+  return summarizeCompany(companyId, period)
+}
+
 // Aggregate a company's months into period totals.
 function summarizeCompany(companyId, period) {
   const months = MONTHLY[companyId]
@@ -134,9 +183,9 @@ router.get('/coa-mapping', (req, res) => {
 
 // Group dashboard (A): per-company summaries + group totals.
 router.get('/reports/group/summary', (req, res) => {
-  const period = (req.query.period || 'mtd').toString()
+  const period = req.query.dateFrom ? `${req.query.dateFrom}~${req.query.dateTo}` : (req.query.period || 'mtd').toString()
   const companies = COMPANIES.map(c => {
-    const s = summarizeCompany(c.id, period)
+    const s = resolveSummary(c.id, req.query)
     const alerts = alertsFor(c.id, s)
     let status = 'profit'
     if (s.operatingProfit < 0) status = 'loss'
@@ -166,8 +215,8 @@ router.get('/reports/group/summary', (req, res) => {
 router.get('/reports/company/:id/summary', (req, res) => {
   const c = COMPANIES.find(x => x.id === req.params.id)
   if (!c) return res.status(404).json({ error: 'Không tìm thấy công ty' })
-  const period = (req.query.period || 'mtd').toString()
-  const summary = summarizeCompany(c.id, period)
+  const period = req.query.dateFrom ? `${req.query.dateFrom}~${req.query.dateTo}` : (req.query.period || 'mtd').toString()
+  const summary = resolveSummary(c.id, req.query)
   const arap = arApFor(c.id)
   const alerts = alertsFor(c.id, summary)
 
@@ -188,8 +237,8 @@ router.get('/reports/company/:id/summary', (req, res) => {
 router.get('/reports/company/:id/cost-structure', (req, res) => {
   const c = COMPANIES.find(x => x.id === req.params.id)
   if (!c) return res.status(404).json({ error: 'Không tìm thấy công ty' })
-  const period = (req.query.period || 'mtd').toString()
-  const current = summarizeCompany(c.id, period)
+  const period = req.query.dateFrom ? `${req.query.dateFrom}~${req.query.dateTo}` : (req.query.period || 'mtd').toString()
+  const current = resolveSummary(c.id, req.query)
 
   // Prior comparison: previous period of the same kind
   const m = todayMonthIdx()
@@ -237,8 +286,8 @@ router.get('/reports/company/:id/cost-structure', (req, res) => {
 router.get('/reports/company/:id/pnl', (req, res) => {
   const c = COMPANIES.find(x => x.id === req.params.id)
   if (!c) return res.status(404).json({ error: 'Không tìm thấy công ty' })
-  const period = (req.query.period || 'ytd').toString()
-  const current = summarizeCompany(c.id, period)
+  const period = req.query.dateFrom ? `${req.query.dateFrom}~${req.query.dateTo}` : (req.query.period || 'ytd').toString()
+  const current = resolveSummary(c.id, req.query)
 
   const m = todayMonthIdx()
   let prior
@@ -322,10 +371,10 @@ router.put('/companies/:id/thresholds', requireAdmin, (req, res) => {
 
 // Aggregate alerts across all companies for the alerts page.
 router.get('/alerts', (req, res) => {
-  const period = (req.query.period || 'mtd').toString()
+  const period = req.query.dateFrom ? `${req.query.dateFrom}~${req.query.dateTo}` : (req.query.period || 'mtd').toString()
   const out = []
   for (const c of COMPANIES) {
-    const s = summarizeCompany(c.id, period)
+    const s = resolveSummary(c.id, req.query)
     const alerts = alertsFor(c.id, s)
     for (const a of alerts) {
       out.push({ ...a, companyId: c.id, companyName: c.name })

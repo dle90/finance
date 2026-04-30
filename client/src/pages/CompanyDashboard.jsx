@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { getCompanySummary } from '../api'
 import { useCompany } from '../context/CompanyContext'
-import { fmtVnd, fmtPct, PERIOD_LABELS } from '../utils/format'
+import { fmtVnd, fmtPct, periodLabel } from '../utils/format'
 import { MoneyKpi, Kpi } from '../components/Kpi'
 import PeriodPicker from '../components/PeriodPicker'
 
@@ -14,13 +14,14 @@ export default function CompanyDashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
 
+  const periodKey = typeof period === 'string' ? period : `${period?.from}~${period?.to}`
   useEffect(() => {
     if (!current?.id) return
     setLoading(true)
     getCompanySummary(current.id, period)
       .then(setData)
       .finally(() => setLoading(false))
-  }, [current?.id, period])
+  }, [current?.id, periodKey])
 
   if (!current) return <div className="text-gray-500">Đang tải danh sách công ty…</div>
   if (loading || !data) return <div className="text-gray-500">Đang tải {current.name}…</div>
@@ -34,7 +35,7 @@ export default function CompanyDashboard() {
         <div>
           <h1 className="text-xl font-bold text-gray-800">{current.name}</h1>
           <div className="text-xs text-gray-500 mt-0.5">
-            {PERIOD_LABELS[period]} · MST {current.taxCode}
+            {periodLabel(period)} · MST {current.taxCode}
           </div>
         </div>
         <PeriodPicker value={period} onChange={setPeriod} />

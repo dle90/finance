@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { getCostStructure } from '../api'
 import { useCompany } from '../context/CompanyContext'
-import { fmtVnd, fmtPct, fmtPctRaw, PERIOD_LABELS, variance } from '../utils/format'
+import { fmtVnd, fmtPct, fmtPctRaw, periodLabel, variance } from '../utils/format'
 import PeriodPicker from '../components/PeriodPicker'
 
 export default function CostStructure() {
@@ -11,13 +11,14 @@ export default function CostStructure() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
 
+  const periodKey = typeof period === 'string' ? period : `${period?.from}~${period?.to}`
   useEffect(() => {
     if (!current?.id) return
     setLoading(true)
     getCostStructure(current.id, period)
       .then(setData)
       .finally(() => setLoading(false))
-  }, [current?.id, period])
+  }, [current?.id, periodKey])
 
   if (!current) return <div className="text-gray-500">Đang tải…</div>
   if (loading || !data) return <div className="text-gray-500">Đang tải cơ cấu chi phí…</div>
@@ -49,7 +50,7 @@ export default function CostStructure() {
         <div>
           <h1 className="text-xl font-bold text-gray-800">{current.name} — Cơ cấu chi phí</h1>
           <div className="text-xs text-gray-500 mt-0.5">
-            {PERIOD_LABELS[period]} · Tổng chi phí {fmtVnd(cur.totalOpex)} · Doanh thu {fmtVnd(cur.revenue)}
+            {periodLabel(period)} · Tổng chi phí {fmtVnd(cur.totalOpex)} · Doanh thu {fmtVnd(cur.revenue)}
           </div>
         </div>
         <PeriodPicker value={period} onChange={setPeriod} />
