@@ -1,34 +1,23 @@
-// Report tree for the Finance dashboard. Mirrors LinkRad's Tài Chính subtree
-// but is the only group here — clinical / vận hành removed.
+// Navigation tree for the management-finance dashboard. Two top-level zones:
+// Group (across companies) and Company (single-company drill-down). Plus admin
+// utilities for thresholds & alerts.
 
-export const REPORT_GROUPS = [
+export const NAV = [
   {
-    key: 'tai-chinh',
-    label: 'Tài Chính',
+    label: 'Tổng quan tập đoàn',
     items: [
-      { key: 'tai-chinh-overview', label: 'Tổng quan', icon: '💼' },
-      { key: 'doanh-thu',          label: 'Doanh thu', icon: '💰' },
+      { path: '/group',   label: 'Dashboard tập đoàn', icon: '🏢' },
+      { path: '/alerts',  label: 'Cảnh báo',           icon: '🚨' },
     ],
   },
-]
-
-export const TOP_LEVEL = { key: 'tong-quan', label: 'Tổng Quan', icon: '📊' }
-
-export const REPORT_TO_GROUP = Object.fromEntries(
-  REPORT_GROUPS.flatMap(g => g.items.map(i => [i.key, { group: g, item: i }]))
-)
-
-export const DEFAULT_REPORT_KEY = TOP_LEVEL.key
-
-// Doanh thu sub-dimensions — these will eventually map to Misa-backed
-// queries. The dimension list itself is UI-driven, separate from the
-// data source.
-export const DOANH_THU_DIMENSIONS = [
-  { key: 'revenue-detail',    label: 'Chi tiết' },
-  { key: 'clinic-revenue',    label: 'Chi nhánh' },
-  { key: 'customer-detail',   label: 'Khách hàng' },
-  { key: 'referral-revenue',  label: 'Đối tác GT' },
-  { key: 'promotion-detail',  label: 'Khuyến mãi' },
-  { key: 'refund-exchange',   label: 'Hoàn trả / đổi' },
-  { key: 'e-invoice',         label: 'Hóa đơn điện tử' },
+  {
+    label: 'Theo công ty',
+    items: [
+      { path: '/company',         label: 'Tổng quan',     icon: '📊' },
+      { path: '/company/pnl',     label: 'Kết quả KD',     icon: '📈' },
+      { path: '/company/costs',   label: 'Cơ cấu chi phí', icon: '💸' },
+      { path: '/company/import',  label: 'Nhập Sổ Cái',    icon: '📥' },
+      { path: '/company/thresholds', label: 'Định mức',    icon: '🎯' },
+    ],
+  },
 ]

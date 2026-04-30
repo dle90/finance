@@ -24,8 +24,8 @@ const guardWrites = (req, res, next) => {
 
 app.get('/api/health', (req, res) => res.json({ ok: true }))
 
-// TODO: mount Misa-backed finance routes here
-// app.use('/api/finance', guardWrites, require('./routes/finance'))
+app.use('/api/finance', require('./routes/finance'))
+app.use('/api/finance', require('./routes/gl'))
 
 const clientDist = path.join(__dirname, '..', 'client', 'dist')
 app.use(express.static(clientDist))
