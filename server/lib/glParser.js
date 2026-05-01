@@ -129,6 +129,8 @@ function buildColumnMap(rows, header) {
     if (/(tai khoan|tk).*(no)\b/.test(h) || /^tk no\b/.test(h)) return 'debitAccount'
     if (/(tai khoan|tk).*(co)\b/.test(h) || /^tk co\b/.test(h)) return 'creditAccount'
     if (/(tk|tai khoan).*(doi ung|d\/u)/.test(h)) return 'contraAccount'
+    // Bare "Tài khoản" col (MISA single-entry format: account + contra account)
+    if (/^tai khoan$/.test(h)) return 'mainAccount'
     if (/(phat sinh|so tien).*\bno\b/.test(h)) return 'debitAmount'
     if (/(phat sinh|so tien).*\bco\b/.test(h)) return 'creditAmount'
     if (/^so tien\b/.test(h) || /^thanh tien\b/.test(h)) return 'amount'
@@ -178,7 +180,9 @@ function parseWorkbook(buffer) {
 
     // Detect report type by which fields the header exposes
     if (map.debitAccount != null && map.creditAccount != null && map.amount != null) {
-      reportType = 'journal' // Sổ Nhật Ký Chung
+      reportType = 'journal' // Sổ Nhật Ký Chung (TK Nợ / TK Có riêng)
+    } else if (map.mainAccount != null && map.contraAccount != null) {
+      reportType = 'journal' // Sổ Nhật Ký Chung (Tài khoản + TK đối ứng)
     } else if (map.contraAccount != null && (map.debitAmount != null || map.creditAmount != null)) {
       reportType = 'ledger' // Sổ Cái — needs current account context
     } else if (map.debitAmount != null && map.creditAmount != null) {
@@ -206,7 +210,24 @@ function parseWorkbook(buffer) {
         counterpartyCode: get('counterpartyCode') ? String(get('counterpartyCode')).trim() : '',
         counterpartyName: get('counterpartyName') ? String(get('counterpartyName')).trim() : '',
         costItem: get('costItem') ? String(get('costItem')).trim() : '',
-        rowIndex: i + 1, // 1-based, matches Excel row numbers
+        rowIndex: i + 1,
+      }
+
+      // MISA single-entry format: "Tài khoản" + "TK đối ứng" + Phát sinh Nợ/Có
+      // Resolve which is debit and which is credit based on which amount column has a value.
+      if (!rec.debitAccount && !rec.creditAccount) {
+        const mainAcc   = get('mainAccount')   ? String(get('mainAccount')).trim()   : ''
+        const contraAcc = get('contraAccount') ? String(get('contraAccount')).trim() : ''
+        if (mainAcc && contraAcc) {
+          const debitAmt = parseAmount(get('debitAmount'))
+          if (debitAmt) {
+            rec.debitAccount  = mainAcc
+            rec.creditAccount = contraAcc
+          } else {
+            rec.creditAccount = mainAcc
+            rec.debitAccount  = contraAcc
+          }
+        }
       }
 
       // Resolve amount: explicit `amount` column OR debit/credit pair
